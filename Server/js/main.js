@@ -4,8 +4,7 @@ var isChannelReady = false;
 var isInitiator = false;
 var isStarted = false;
 var localStream;
-var pc;
-var remoteStream;
+var pc = []; // Peer Connection 목록
 var turnReady;
 
 var pcConfig = {
@@ -21,9 +20,9 @@ var sdpConstraints = {
 };
 
 /////////////////////////////////////////////
-
+// 채팅방 ID
 function getRoomId(){
-  var roomId = '';
+  var roomId = 'A';
 
   window.location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(str, key, value) {
     if(key == 'roomId') {
@@ -36,66 +35,83 @@ function getRoomId(){
 
 var room = getRoomId();
 console.log('room id ===================================== ' + room);
-// Could prompt for room name:
-// room = prompt('Enter room name:');
 
+// 소켓 연결
 var socket = io.connect();
 
+
+// 채팅방 생성 or 참가
 if (room !== '') {
   socket.emit('create or join', room);
   console.log('Attempted to create or  join room', room);
 }
 
+
+// 채팅방이 신규 생성된 경우
 socket.on('created', function(room) {
   console.log('Created room ' + room);
   isInitiator = true;
 });
 
+
+// 채팅방이 Full 인경우
 socket.on('full', function(room) {
   console.log('Room ' + room + ' is full');
 });
 
+
+// 다른 참가자 참여요청
 socket.on('join', function (room){
   console.log('Another peer made a request to join room ' + room);
   console.log('This peer is the initiator of room ' + room + '!');
   isChannelReady = true;
 });
 
+
+// 다른 참가자 참여
 socket.on('joined', function(room) {
   console.log('joined: ' + room);
   isChannelReady = true;
 });
 
+
+// Log
 socket.on('log', function(array) {
   console.log.apply(console, array);
 });
-
 ////////////////////////////////////////////////
 
+
+// 메시지 전송
 function sendMessage(message) {
   console.log('Client sending message: ', message);
   socket.emit('message', message);
 }
 
-// This client receives a message
+// 메시지 수신
 socket.on('message', function(message) {
   console.log('Client received message:', message);
+
   if (message === 'got user media') {
     maybeStart();
+
   } else if (message.type === 'offer') {
     if (!isInitiator && !isStarted) {
       maybeStart();
     }
     pc.setRemoteDescription(new RTCSessionDescription(message));
     doAnswer();
+
   } else if (message.type === 'answer' && isStarted) {
     pc.setRemoteDescription(new RTCSessionDescription(message));
+
   } else if (message.type === 'candidate' && isStarted) {
     var candidate = new RTCIceCandidate({
       sdpMLineIndex: message.label,
       candidate: message.candidate
     });
     pc.addIceCandidate(candidate);
+
   } else if (message === 'bye' && isStarted) {
     handleRemoteHangup();
   }
@@ -108,9 +124,7 @@ var localVideo = document.querySelector('#localVideo');
 navigator.mediaDevices.getUserMedia({
   audio: false,
   video: true
-})
-.then(gotStream)
-.catch(function(e) {
+}).then(gotStream).catch(function(e) {
   alert('getUserMedia() error: ' + e.name);
 });
 
@@ -212,32 +226,32 @@ function onCreateSessionDescriptionError(error) {
 }
 
 function requestTurn(turnURL) {
-  var turnExists = false;
-  for (var i in pcConfig.iceServers) {
-    if (pcConfig.iceServers[i].urls.substr(0, 5) === 'turn:') {
-      turnExists = true;
-      turnReady = true;
-      break;
-    }
-  }
-  if (!turnExists) {
-    console.log('Getting TURN server from ', turnURL);
-    // No TURN server. Get one from computeengineondemand.appspot.com:
-    var xhr = new XMLHttpRequest();
-    xhr.onreadystatechange = function() {
-      if (xhr.readyState === 4 && xhr.status === 200) {
-        var turnServer = JSON.parse(xhr.responseText);
-        console.log('Got TURN server: ', turnServer);
-        pcConfig.iceServers.push({
-          'urls': 'turn:' + turnServer.username + '@' + turnServer.turn,
-          'credential': turnServer.password
-        });
-        turnReady = true;
-      }
-    };
-    xhr.open('GET', turnURL, true);
-    xhr.send();
-  }
+  // var turnExists = false;
+  // for (var i in pcConfig.iceServers) {
+  //   if (pcConfig.iceServers[i].urls.substr(0, 5) === 'turn:') {
+  //     turnExists = true;
+  //     turnReady = true;
+  //     break;
+  //   }
+  // }
+  // if (!turnExists) {
+  //   console.log('Getting TURN server from ', turnURL);
+  //   // No TURN server. Get one from computeengineondemand.appspot.com:
+  //   var xhr = new XMLHttpRequest();
+  //   xhr.onreadystatechange = function() {
+  //     if (xhr.readyState === 4 && xhr.status === 200) {
+  //       var turnServer = JSON.parse(xhr.responseText);
+  //       console.log('Got TURN server: ', turnServer);
+  //       pcConfig.iceServers.push({
+  //         'urls': 'turn:' + turnServer.username + '@' + turnServer.turn,
+  //         'credential': turnServer.password
+  //       });
+  //       turnReady = true;
+  //     }
+  //   };
+  //   xhr.open('GET', turnURL, true);
+  //   xhr.send();
+  // }
 }
 
 function handleRemoteStreamAdded(event) {

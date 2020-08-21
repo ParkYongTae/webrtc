@@ -9,7 +9,7 @@ const https = require('https');
 const fs = require('fs');
 const options = {
 	key: fs.readFileSync('./private.pem'),
-	cert: fs.readFileSync('./public.pem') 
+	cert: fs.readFileSync('./public.pem')
 };
 
 var fileServer = new(nodeStatic.Server)();
@@ -32,6 +32,17 @@ io.sockets.on('connection', function(socket) {
   socket.on('message', function(message) {
     log('Client said: ', message);
     // for a real app, would be room-only (not broadcast)
+
+    if (message==="bye" && socket.rooms['foo']) {
+      io.of('/').in('foo').clients((error, socketIds) => {
+        if (error) throw error;
+
+        socketIds.forEach(socketId => {
+          io.sockets.sockets[socketId].leave('foo');
+        });
+      });
+    }
+
     socket.broadcast.emit('message', message);
   });
 
@@ -53,6 +64,7 @@ io.sockets.on('connection', function(socket) {
       socket.join(room);
       socket.emit('joined', room, socket.id);
       io.sockets.in(room).emit('ready');
+
     } else { // max two clients
       socket.emit('full', room);
     }
