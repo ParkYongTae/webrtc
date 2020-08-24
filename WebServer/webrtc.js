@@ -12,6 +12,20 @@ var peerConnectionConfig = {
     ]
 };
 
+function getRoomId(){
+    var roomId = 'AA';
+
+    window.location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(str, key, value) {
+        if(key == 'roomId') {
+            roomId = value;
+        }
+    });
+
+    return roomId;
+}
+
+var roomId = getRoomId();
+
 function pageReady() {
 
     localVideo = document.getElementById('localVideo');
@@ -28,7 +42,11 @@ function pageReady() {
             .then(function(){
 
                 socket = io.connect(config.host, {secure: true});
-                socket.on('signal', gotMessageFromServer);    
+
+                // join room
+                socket.emit('join room', roomId);
+
+                socket.on('signal', gotMessageFromServer);
 
                 socket.on('connect', function(){
 
@@ -40,7 +58,6 @@ function pageReady() {
                         video.parentElement.parentElement.removeChild(parentDiv);
                     });
 
-
                     socket.on('user-joined', function(id, count, clients){
                         clients.forEach(function(socketListId) {
                             if(!connections[socketListId]){
@@ -49,7 +66,7 @@ function pageReady() {
                                 connections[socketListId].onicecandidate = function(){
                                     if(event.candidate != null) {
                                         console.log('SENDING ICE');
-                                        socket.emit('signal', socketListId, JSON.stringify({'ice': event.candidate}));
+                                        socket.emit('signal', roomId, socketListId, JSON.stringify({'ice': event.candidate}));
                                     }
                                 }
 
@@ -69,7 +86,7 @@ function pageReady() {
                             connections[id].createOffer().then(function(description){
                                 connections[id].setLocalDescription(description).then(function() {
                                     // console.log(connections);
-                                    socket.emit('signal', id, JSON.stringify({'sdp': connections[id].localDescription}));
+                                    socket.emit('signal', roomId, id, JSON.stringify({'sdp': connections[id].localDescription}));
                                 }).catch(e => console.log(e));        
                             });
                         }
@@ -89,10 +106,9 @@ function getUserMediaSuccess(stream) {
 }
 
 function gotRemoteStream(event, id) {
-
-    var videos = document.querySelectorAll('video'),
-        video  = document.createElement('video'),
-        div    = document.createElement('div')
+    var videos = document.querySelectorAll('video');
+    var video  = document.createElement('video');
+    var div    = document.createElement('div');
 
     video.setAttribute('data-socket', id);
     //video.src         = window.URL.createObjectURL(event.stream);
@@ -108,7 +124,7 @@ function gotRemoteStream(event, id) {
 function gotMessageFromServer(fromId, message) {
 
     //Parse the incoming signal
-    var signal = JSON.parse(message)
+    var signal = JSON.parse(message);
 
     //Make sure it's not coming from yourself
     if(fromId != socketId) {
@@ -118,7 +134,7 @@ function gotMessageFromServer(fromId, message) {
                 if(signal.sdp.type == 'offer') {
                     connections[fromId].createAnswer().then(function(description){
                         connections[fromId].setLocalDescription(description).then(function() {
-                            socket.emit('signal', fromId, JSON.stringify({'sdp': connections[fromId].localDescription}));
+                            socket.emit('signal', roomId, fromId, JSON.stringify({'sdp': connections[fromId].localDescription}));
                         }).catch(e => console.log(e));        
                     }).catch(e => console.log(e));
                 }

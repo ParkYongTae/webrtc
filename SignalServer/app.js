@@ -17,18 +17,32 @@ var app = https.createServer(options, (req, res)=>{
 
 var io = socketIO.listen(app);
 
-io.on('connection', function(socket){
-	io.sockets.emit("user-joined", socket.id, io.engine.clientsCount, Object.keys(io.sockets.clients().sockets));
+io.sockets.on('connection', function(socket){
 
-	socket.on('signal', (toId, message) => {
+    // join room
+    socket.on('join room', function(roomId){
+        socket.join(roomId);
+
+        // client count
+        var clientsInRoom = io.sockets.adapter.rooms[roomId];
+        var numClients = clientsInRoom ? Object.keys(clientsInRoom.sockets).length : 0;
+
+        //io.sockets.in(roomId).emit("user-joined", socket.id, numClients, clientsInRoom);
+        io.sockets.in(roomId).emit("user-joined", socket.id, numClients, Object.keys(clientsInRoom.sockets));
+    });
+
+	socket.on('signal', (roomId, toId, message) => {
 		io.to(toId).emit('signal', socket.id, message);
+        //io.sockets.in(roomId).emit('signal', socket.id, message);
   	});
 
-    socket.on("message", function(data){
-		io.sockets.emit("broadcast-message", socket.id, data);
+    socket.on("message", function(roomId, data){
+        io.sockets.emit("user-left", socket.id);
+        //io.sockets.in(roomId).emit("broadcast-message", socket.id, data);
     })
 
-	socket.on('disconnect', function() {
-		io.sockets.emit("user-left", socket.id);
+	socket.on('disconnect', function(roomId) {
+        io.sockets.emit("user-left", socket.id);
+        //io.sockets.in(roomId).emit("user-left", socket.id);
 	})
 });
