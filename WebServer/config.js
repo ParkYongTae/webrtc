@@ -1,3 +1,3 @@
 var config = {
-    host: 'https://asdf.com:3001'
+    host: 'https://chat.pnpdot.com:3001'
 }
