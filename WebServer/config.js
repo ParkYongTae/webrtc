@@ -1,3 +1,3 @@
 var config = {
-    host: 'https://chat.pnpdot.com:3001'
+    host: 'https://video2.pnpplanner.com'
 }
