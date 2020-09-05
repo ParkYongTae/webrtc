@@ -1,3 +1,4 @@
+var socket;
 var localVideo;
 var firstPerson = false;
 var socketCount = 0;
@@ -35,7 +36,7 @@ function pageReady() {
 
     var constraints = {
         video: true,
-        audio: true,
+        audio: false,
     };
 
     if(navigator.mediaDevices.getUserMedia) {
@@ -54,10 +55,13 @@ function pageReady() {
                     // join room
                     socket.emit('join room', roomId);
 
-                    socket.on('user-left', function(id){
-                        var video = document.querySelector('[data-socket="'+ id +'"]');
-                        var parentDiv = video.parentElement;
-                        video.parentElement.parentElement.removeChild(parentDiv);
+                    socket.on('user-left', function(roomId, socketId){
+                        var video = document.querySelector('[data-socket="'+ socketId +'"]');
+
+                        if(video) {
+                            var parentDiv = video.parentElement;
+                            video.parentElement.parentElement.removeChild(parentDiv);
+                        }
                     });
 
                     socket.on('user-joined', function(id, count, clients){
@@ -83,7 +87,6 @@ function pageReady() {
                         });
 
                         //Create an offer to connect with your local description
-                        
                         if(count >= 2){
                             connections[id].createOffer().then(function(description){
                                 connections[id].setLocalDescription(description).then(function() {

@@ -13,7 +13,7 @@ const options = {
 var fileServer = new(nodeStatic.Server)();
 var app = https.createServer(options, (req, res)=>{
 	fileServer.serve(req, res);
-}).listen(3001);
+}).listen(8080, "0.0.0.0", function(){});
 
 var io = socketIO.listen(app);
 
@@ -21,6 +21,7 @@ io.sockets.on('connection', function(socket){
 
     // join room
     socket.on('join room', function(roomId){
+
         socket.join(roomId);
 
         // client count
@@ -36,13 +37,17 @@ io.sockets.on('connection', function(socket){
         //io.sockets.in(roomId).emit('signal', socket.id, message);
   	});
 
-    socket.on("message", function(roomId, data){
-        io.sockets.emit("user-left", socket.id);
+    socket.on("user-left", function(roomId, socketId){
+        if (socket.rooms[roomId]) {
+            io.sockets.sockets[socketId].leave(roomId);
+        }
+
+        //io.sockets.emit("user-left", roomId, socketId);
         //io.sockets.in(roomId).emit("broadcast-message", socket.id, data);
-    })
+    });
 
 	socket.on('disconnect', function(roomId) {
         io.sockets.emit("user-left", socket.id);
         //io.sockets.in(roomId).emit("user-left", socket.id);
-	})
+	});
 });
