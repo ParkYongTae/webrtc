@@ -20,7 +20,7 @@ var io = socketIO.listen(app);
 io.sockets.on('connection', function(socket){
 
     // join room
-    socket.on('join room', function(roomId){
+    socket.on('join room', function(roomId, userName){
         socket.join(roomId);
 
         // client count
@@ -28,7 +28,7 @@ io.sockets.on('connection', function(socket){
         var numClients = clientsInRoom ? Object.keys(clientsInRoom.sockets).length : 0;
 
         //io.sockets.in(roomId).emit("user-joined", socket.id, numClients, clientsInRoom);
-        io.sockets.in(roomId).emit("user-joined", socket.id, numClients, Object.keys(clientsInRoom.sockets));
+        io.sockets.in(roomId).emit("user-joined", socket.id, userName, numClients, Object.keys(clientsInRoom.sockets));
     });
 
 	socket.on('signal', (roomId, toId, message) => {
