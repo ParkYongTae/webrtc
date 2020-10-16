@@ -1,30 +1,33 @@
+var socket;
 var localVideo;
 var firstPerson = false;
 var socketCount = 0;
 var socketId;
 var localStream;
 var connections = [];
+var roomId = 'A';
+
+window.location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(str, key, value) {
+    if(key == 'roomId') {
+        roomId = value;
+    }
+});
 
 var peerConnectionConfig = {
     'iceServers': [
-        {'urls': 'stun:stun.services.mozilla.com'},
         {'urls': 'stun:stun.l.google.com:19302'},
+        {
+            'urls': 'turn:videoturn.pnpplanner.com:3478?transport=udp',
+            'credential': 'pnpsoft',
+            'username': 'pnpp77!!'
+        },
+        {
+            'urls': 'turn:videoturn.pnpplanner.com:3478?transport=tcp',
+            'credential': 'pnpsoft',
+            'username': 'pnpp77!!'
+        }
     ]
 };
-
-function getRoomId(){
-    var roomId = 'AA';
-
-    window.location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(str, key, value) {
-        if(key == 'roomId') {
-            roomId = value;
-        }
-    });
-
-    return roomId;
-}
-
-var roomId = getRoomId();
 
 function pageReady() {
 
@@ -43,19 +46,22 @@ function pageReady() {
 
                 socket = io.connect(config.host, {secure: true});
 
-                // join room
-                socket.emit('join room', roomId);
-
                 socket.on('signal', gotMessageFromServer);
 
                 socket.on('connect', function(){
 
                     socketId = socket.id;
 
-                    socket.on('user-left', function(id){
-                        var video = document.querySelector('[data-socket="'+ id +'"]');
-                        var parentDiv = video.parentElement;
-                        video.parentElement.parentElement.removeChild(parentDiv);
+                    // join room
+                    socket.emit('join room', roomId);
+
+                    socket.on('user-left', function(roomId, socketId){
+                        var video = document.querySelector('[data-socket="'+ socketId +'"]');
+
+                        if(video) {
+                            var parentDiv = video.parentElement;
+                            video.parentElement.parentElement.removeChild(parentDiv);
+                        }
                     });
 
                     socket.on('user-joined', function(id, count, clients){
@@ -81,7 +87,6 @@ function pageReady() {
                         });
 
                         //Create an offer to connect with your local description
-                        
                         if(count >= 2){
                             connections[id].createOffer().then(function(description){
                                 connections[id].setLocalDescription(description).then(function() {
