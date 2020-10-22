@@ -1,2 +1,3 @@
 var config = {
-    host: 'https://localhost:3000'
+    host: 'https://localhost:3001'
+}
