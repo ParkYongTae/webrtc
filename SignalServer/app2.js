@@ -22,7 +22,7 @@ var connectUserListGroupByRoom = [];
 io.sockets.on('connection', function(socket){
 
     // join room
-    socket.on('join room', function(roomId, userName, userImage, isStreamExists){
+    socket.on('joinRoom', function(roomId, userName, userImage, isStreamExists){
         socket.join(roomId);
 
         var joinUserInfo = {
@@ -42,18 +42,16 @@ io.sockets.on('connection', function(socket){
         // client list
         var userListInRoom = connectUserListGroupByRoom[roomId];
 
-        io.sockets.in(roomId).emit("user-joined", joinUserInfo, userListInRoom);
+        io.sockets.in(roomId).emit("userJoined", joinUserInfo, userListInRoom);
     });
 
-    socket.on('signal', (roomId, toId, message) => {
+    socket.on('signal', (toId, message) => {
         io.to(toId).emit('signal', socket.id, message);
-        //io.sockets.in(roomId).emit('signal', socket.id, message);
     });
 
-    socket.on("message", function(roomId, data){
-        io.sockets.emit("user-left", socket.id);
-        //io.sockets.in(roomId).emit("broadcast-message", socket.id, data);
-    })
+    socket.on('videoToggle', (toId, videoEnabled) => {
+        io.to(toId).emit('videoToggle', socket.id, videoEnabled);
+    });
 
     socket.on('disconnect', function() {
 
@@ -74,7 +72,6 @@ io.sockets.on('connection', function(socket){
             }
         }
 
-        io.sockets.emit("user-left", socket.id);
-        //io.sockets.in(roomId).emit("user-left", socket.id);
+        io.sockets.emit("userLeft", socket.id);
     })
 });
