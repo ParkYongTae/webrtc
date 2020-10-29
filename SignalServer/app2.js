@@ -21,30 +21,6 @@ var connectUserListGroupByRoom = [];
 
 io.sockets.on('connection', function(socket){
 
-    var socketAllList = Object.keys(io.sockets.sockets);
-
-    // 전체소켓을 조사하여 연결 끊어진 소켓 채팅방에서 제거
-    var roomList = Object.keys(connectUserListGroupByRoom);
-
-    for(var i = 0; i < roomList.length; i++) {
-        if (connectUserListGroupByRoom[roomList[i]]) {
-            for (var k = 0; k < connectUserListGroupByRoom[roomList[i]].length; k++) {
-                var socketId = connectUserListGroupByRoom[roomList[i]][k].socketId;
-
-                var isExists = false;
-                for(var j = 0; j < socketAllList.length; j++){
-                    if(socketAllList[j] == socketId){
-                        isExists = true;
-                    }
-                }
-
-                if (isExists == false) {
-                    connectUserListGroupByRoom[roomList[i]].splice(k, 1);
-                }
-            }
-        }
-    }
-
     // check video chat list
     socket.on('checkVideoChatList', function(){
 
@@ -130,12 +106,8 @@ io.sockets.on('connection', function(socket){
                     if (socketId == socket.id) {
                         connectUserListGroupByRoom[roomList[i]].splice(k, 1);
 
-                        if (socket.rooms[roomList[i]]) {
-                            io.sockets.sockets[socketId].leave(roomList[i]);
-                            socket.disconnect();
-                            socket.close();
-                            break;
-                        }
+                        socket.leave(roomList[i]);
+                        socket.disconnect();
                     }
                 }
             }
