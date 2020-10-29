@@ -24,12 +24,17 @@ io.sockets.on('connection', function(socket){
     // check video chat list
     socket.on('checkVideoChatList', function(){
 
-        var roomList = Object.keys(connectUserListGroupByRoom);
+        var roomList = Object.keys(io.sockets.adapter.rooms);
 
         var videoChatList = [];
 
         for(var i = 0; i < roomList.length; i++) {
-            if (roomList[i] && connectUserListGroupByRoom[roomList[i]].length > 0) {
+
+            // client count
+            var clientsInRoom = io.sockets.adapter.rooms[roomList[i]];
+            var numClients = clientsInRoom ? Object.keys(clientsInRoom.sockets).length : 0;
+
+            if (numClients > 0) {
                 videoChatList.push(roomList[i]);
             }
         }
@@ -39,15 +44,16 @@ io.sockets.on('connection', function(socket){
 
     // check room
     socket.on('checkRoom', function(roomId){
-        if(!connectUserListGroupByRoom[roomId]){
-            connectUserListGroupByRoom[roomId] = [];
-        }
+
+        // client count
+        var clientsInRoom = io.sockets.adapter.rooms[roomId];
+        var numClients = clientsInRoom ? Object.keys(clientsInRoom.sockets).length : 0;
 
         var checkResult = {
             type : "SUCCESS"
         };
 
-        if(connectUserListGroupByRoom[roomId].length >= 10) {
+        if(numClients >= 10) {
             checkResult.type = 'FULL'
         }
 
@@ -71,7 +77,16 @@ io.sockets.on('connection', function(socket){
             videoEnabled: true
         };
 
-        connectUserListGroupByRoom[roomId].push(joinUserInfo);
+        var isExists = false;
+        for(var i = 0; i < connectUserListGroupByRoom[roomId].length; i++){
+            if(connectUserListGroupByRoom[roomId][i].socketId == joinUserInfo.socketId){
+                isExists = true;
+            }
+        }
+
+        if(isExists == false) {
+            connectUserListGroupByRoom[roomId].push(joinUserInfo);
+        }
 
         // client list
         var userListInRoom = connectUserListGroupByRoom[roomId];
