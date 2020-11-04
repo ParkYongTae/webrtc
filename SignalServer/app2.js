@@ -21,6 +21,8 @@ var connectUserListGroupByRoom = [];
 
 io.sockets.on('connection', function(socket){
 
+    var myUserId = '';
+
     // check video chat list
     socket.on('checkVideoChatList', function(){
 
@@ -77,6 +79,8 @@ io.sockets.on('connection', function(socket){
 
         socket.join(roomId);
 
+        myUserId = userId;
+
         var joinUserInfo = {
             socketId: socket.id,
             roomId: roomId,
@@ -105,7 +109,7 @@ io.sockets.on('connection', function(socket){
     });
 
     socket.on('signal', (toSocketId, userId, message) => {
-        io.to(toSocketId).emit('signal', socket.id, userId, message);
+        io.to(toSocketId).emit('signal', socket.id, myUserId, message);
     });
 
     socket.on('videoToggle', (roomId, userId, videoEnabled) => {
