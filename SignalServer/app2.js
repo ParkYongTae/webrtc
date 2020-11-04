@@ -30,9 +30,14 @@ io.sockets.on('connection', function(socket){
 
         for(var i = 0; i < roomList.length; i++) {
 
+            if(!connectUserListGroupByRoom[roomList[i]]){
+                connectUserListGroupByRoom[roomList[i]] = [];
+            }
+
             // client count
-            var clientsInRoom = io.sockets.adapter.rooms[roomList[i]];
-            var numClients = clientsInRoom ? Object.keys(clientsInRoom.sockets).length : 0;
+            // var clientsInRoom = io.sockets.adapter.rooms[roomList[i]];
+            // var numClients = clientsInRoom ? Object.keys(clientsInRoom.sockets).length : 0;
+            var numClients = connectUserListGroupByRoom[roomList[i]].length;
 
             if (numClients > 0) {
                 videoChatList.push(roomList[i]);
@@ -44,10 +49,14 @@ io.sockets.on('connection', function(socket){
 
     // check room
     socket.on('checkRoom', function(roomId){
+        if(!connectUserListGroupByRoom[roomId]){
+            connectUserListGroupByRoom[roomId] = [];
+        }
 
         // client count
-        var clientsInRoom = io.sockets.adapter.rooms[roomId];
-        var numClients = clientsInRoom ? Object.keys(clientsInRoom.sockets).length : 0;
+        //var clientsInRoom = io.sockets.adapter.rooms[roomId];
+        //var numClients = clientsInRoom ? Object.keys(clientsInRoom.sockets).length : 0;
+        var numClients = connectUserListGroupByRoom[roomId].length;
 
         var checkResult = {
             type : "SUCCESS"
@@ -61,7 +70,7 @@ io.sockets.on('connection', function(socket){
     });
 
     // join room
-    socket.on('joinRoom', function(roomId, userName, userImage, isStreamExists){
+    socket.on('joinRoom', function(roomId, userId, userName, userImage, isStreamExists){
         if(!connectUserListGroupByRoom[roomId]){
             connectUserListGroupByRoom[roomId] = [];
         }
@@ -71,22 +80,23 @@ io.sockets.on('connection', function(socket){
         var joinUserInfo = {
             socketId: socket.id,
             roomId: roomId,
+            userId: userId,
             userName: userName,
             userImage: userImage,
             isStreamExists: isStreamExists,
             videoEnabled: true
         };
 
-        var isExists = false;
         for(var i = 0; i < connectUserListGroupByRoom[roomId].length; i++){
-            if(connectUserListGroupByRoom[roomId][i].socketId == joinUserInfo.socketId){
-                isExists = true;
+            if(connectUserListGroupByRoom[roomId][i].userId == joinUserInfo.userId){
+                connectUserListGroupByRoom[roomId].splice(i, 1);
+                break;
             }
         }
 
-        if(isExists == false) {
-            connectUserListGroupByRoom[roomId].push(joinUserInfo);
-        }
+        connectUserListGroupByRoom[roomId].push(joinUserInfo);
+
+        console.log(connectUserListGroupByRoom[roomId].length);
 
         // client list
         var userListInRoom = connectUserListGroupByRoom[roomId];
@@ -94,31 +104,34 @@ io.sockets.on('connection', function(socket){
         io.sockets.in(roomId).emit("userJoined", joinUserInfo, userListInRoom);
     });
 
-    socket.on('signal', (toId, message) => {
-        io.to(toId).emit('signal', socket.id, message);
+    socket.on('signal', (toSocketId, userId, message) => {
+        io.to(toSocketId).emit('signal', socket.id, userId, message);
     });
 
-    socket.on('videoToggle', (roomId, toId, videoEnabled) => {
+    socket.on('videoToggle', (roomId, userId, videoEnabled) => {
 
         for (var i = 0; i < connectUserListGroupByRoom[roomId].length; i++) {
-            if (socket.id == connectUserListGroupByRoom[roomId][i].socketId) {
+            if (userId == connectUserListGroupByRoom[roomId][i].userId) {
                 connectUserListGroupByRoom[roomId][i].videoEnabled = videoEnabled;
                 break;
             }
         }
 
-        io.to(toId).emit('videoToggle', socket.id, videoEnabled);
+        io.sockets.in(roomId).emit('videoToggle', userId, videoEnabled);
     });
 
     socket.on('disconnect', function() {
 
         var roomList = Object.keys(connectUserListGroupByRoom);
 
+        var userId = '';
+
         for(var i = 0; i < roomList.length; i++) {
             if (connectUserListGroupByRoom[roomList[i]]) {
                 for (var k = 0; k < connectUserListGroupByRoom[roomList[i]].length; k++) {
                     var socketId = connectUserListGroupByRoom[roomList[i]][k].socketId;
                     if (socketId == socket.id) {
+                        userId = connectUserListGroupByRoom[roomList[i]][k].userId;
                         connectUserListGroupByRoom[roomList[i]].splice(k, 1);
 
                         socket.leave(roomList[i]);
@@ -128,6 +141,6 @@ io.sockets.on('connection', function(socket){
             }
         }
 
-        io.sockets.emit("userLeft", socket.id);
+        io.sockets.emit("userLeft", userId);
     })
 });
