@@ -100,15 +100,13 @@ io.sockets.on('connection', function(socket){
 
         connectUserListGroupByRoom[roomId].push(joinUserInfo);
 
-        console.log(connectUserListGroupByRoom[roomId].length);
-
         // client list
         var userListInRoom = connectUserListGroupByRoom[roomId];
 
         io.sockets.in(roomId).emit("userJoined", joinUserInfo, userListInRoom);
     });
 
-    socket.on('signal', (toSocketId, userId, message) => {
+    socket.on('signal', (toSocketId, message) => {
         io.to(toSocketId).emit('signal', socket.id, myUserId, message);
     });
 
